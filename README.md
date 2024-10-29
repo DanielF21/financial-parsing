@@ -1,4 +1,4 @@
-# Project Name
+# Quarterly Statement Parser
 
 ## Description  
 This project is a web application built with Next.js that allows users to upload PDF documents, extract data from them, and view the results in CSV format. It utilizes Supabase for backend services, including authentication and file storage.
