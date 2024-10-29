@@ -61,12 +61,11 @@ const BalanceSheetData = z.object({
     totalLiabilitiesAndEquity: z.number(),
 });
 
-
-//extraction:
+// Extraction
 async function analyzeIncomeStatement<T>(prompt: string, schema: z.ZodSchema<T>): Promise<T> {
     try {
         const { object } = await generateObject({
-            model: openai("gpt-4"),
+            model: openai("gpt-4o"),
             prompt: prompt,
             schema: schema
         });
@@ -77,8 +76,7 @@ async function analyzeIncomeStatement<T>(prompt: string, schema: z.ZodSchema<T>)
     }
 }
 
-function chunkText(text: string, maxTokens: number = 8000): string[] {
-    // Rough approximation: 1 token ≈ 4 characters
+function chunkText(text: string, maxTokens: number = 12500): string[] {
     const chunkSize = maxTokens * 4;
     const chunks: string[] = [];
     
@@ -87,6 +85,10 @@ function chunkText(text: string, maxTokens: number = 8000): string[] {
     }
     
     return chunks;
+}
+
+async function delay(ms: number) {
+    return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 async function extractMetrics(text: string): Promise<z.infer<typeof BalanceSheetData>> {
@@ -107,9 +109,10 @@ async function extractMetrics(text: string): Promise<z.infer<typeof BalanceSheet
             if (!combinedResults) {
                 combinedResults = chunkResult;
             } else {
-                // Merge results, taking non-zero values
                 combinedResults = mergeResults(combinedResults, chunkResult);
             }
+            // avoid rate limits
+            await delay(2000); 
         } catch (error) {
             console.error("Error processing chunk:", error);
         }
@@ -127,13 +130,50 @@ function mergeResults(
     newData: z.infer<typeof BalanceSheetData>
 ): z.infer<typeof BalanceSheetData> {
     return {
-        ...existing,
         currentAssets: {
             ...existing.currentAssets,
             cashAndEquivalents: newData.currentAssets.cashAndEquivalents || existing.currentAssets.cashAndEquivalents,
-            // ... merge other fields similarly
+            marketableSecurities: newData.currentAssets.marketableSecurities || existing.currentAssets.marketableSecurities,
+            inventories: newData.currentAssets.inventories || existing.currentAssets.inventories,
+            accountsReceivable: newData.currentAssets.accountsReceivable || existing.currentAssets.accountsReceivable,
+            totalCurrentAssets: newData.currentAssets.totalCurrentAssets || existing.currentAssets.totalCurrentAssets,
         },
-        // ... merge other sections similarly
+        nonCurrentAssets: {
+            ...existing.nonCurrentAssets,
+            propertyAndEquipment: newData.nonCurrentAssets.propertyAndEquipment || existing.nonCurrentAssets.propertyAndEquipment,
+            operatingLeases: newData.nonCurrentAssets.operatingLeases || existing.nonCurrentAssets.operatingLeases,
+            goodwill: newData.nonCurrentAssets.goodwill || existing.nonCurrentAssets.goodwill,
+            otherAssets: newData.nonCurrentAssets.otherAssets || existing.nonCurrentAssets.otherAssets,
+        },
+        currentLiabilities: {
+            ...existing.currentLiabilities,
+            accountsPayable: newData.currentLiabilities.accountsPayable || existing.currentLiabilities.accountsPayable,
+            accruedExpenses: newData.currentLiabilities.accruedExpenses || existing.currentLiabilities.accruedExpenses,
+            unearnedRevenue: newData.currentLiabilities.unearnedRevenue || existing.currentLiabilities.unearnedRevenue,
+            totalCurrentLiabilities: newData.currentLiabilities.totalCurrentLiabilities || existing.currentLiabilities.totalCurrentLiabilities,
+        },
+        nonCurrentLiabilities: {
+            ...existing.nonCurrentLiabilities,
+            longTermLeases: newData.nonCurrentLiabilities.longTermLeases || existing.nonCurrentLiabilities.longTermLeases,
+            longTermDebt: newData.nonCurrentLiabilities.longTermDebt || existing.nonCurrentLiabilities.longTermDebt,
+            otherLongTermLiabilities: newData.nonCurrentLiabilities.otherLongTermLiabilities || existing.nonCurrentLiabilities.otherLongTermLiabilities,
+        },
+        stockholdersEquity: {
+            ...existing.stockholdersEquity,
+            commonStock: {
+                ...existing.stockholdersEquity.commonStock,
+                value: newData.stockholdersEquity.commonStock.value || existing.stockholdersEquity.commonStock.value,
+                sharesIssued: newData.stockholdersEquity.commonStock.sharesIssued || existing.stockholdersEquity.commonStock.sharesIssued,
+                sharesOutstanding: newData.stockholdersEquity.commonStock.sharesOutstanding || existing.stockholdersEquity.commonStock.sharesOutstanding,
+            },
+            treasuryStock: newData.stockholdersEquity.treasuryStock || existing.stockholdersEquity.treasuryStock,
+            additionalPaidInCapital: newData.stockholdersEquity.additionalPaidInCapital || existing.stockholdersEquity.additionalPaidInCapital,
+            accumulatedOtherComprehensiveIncome: newData.stockholdersEquity.accumulatedOtherComprehensiveIncome || existing.stockholdersEquity.accumulatedOtherComprehensiveIncome,
+            retainedEarnings: newData.stockholdersEquity.retainedEarnings || existing.stockholdersEquity.retainedEarnings,
+            totalStockholdersEquity: newData.stockholdersEquity.totalStockholdersEquity || existing.stockholdersEquity.totalStockholdersEquity,
+        },
+        totalAssets: newData.totalAssets || existing.totalAssets,
+        totalLiabilitiesAndEquity: newData.totalLiabilitiesAndEquity || existing.totalLiabilitiesAndEquity,
     };
 }
 

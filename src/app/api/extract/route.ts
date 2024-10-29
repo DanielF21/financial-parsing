@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ 
         data: csvContent,
-        status: 'completed'  // Optional: Add processing status
+        status: 'completed'
     });
   } catch (error) {
     console.error('Error processing PDF:', error);
