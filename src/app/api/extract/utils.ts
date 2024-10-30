@@ -76,7 +76,7 @@ async function analyzeIncomeStatement<T>(prompt: string, schema: z.ZodSchema<T>)
     }
 }
 
-function chunkText(text: string, maxTokens: number = 28000): string {
+function chunkText(text: string, maxTokens: number = 24000): string {
     const chunkSize = maxTokens * 4;
     return text.slice(0, chunkSize);
 }
