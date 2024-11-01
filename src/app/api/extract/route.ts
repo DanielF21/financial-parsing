@@ -45,12 +45,10 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'File is empty' }, { status: 400 });
   }
 
-  //const userId = searchParams.get("userId");
   const fileBuffer = Buffer.from(arrayBuffer);
   try {
     const text = await readPdfBuffer(fileBuffer);
     
-    // Add progress tracking
     const analysisResult = await analyzeReportWithGPT(text);
     const csvContent = await jsonToCsv(Promise.resolve(analysisResult));
 
